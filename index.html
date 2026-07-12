@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>4L Sign Out</title>
+<style>
+body{margin:0;background:#eef1f5;font-family:Arial,sans-serif;color:#222}
+.header{background:#fff;padding:14px;border-bottom:1px solid #ccc;text-align:center}
+.header h1{margin:0;font-size:25px}
+.header p{margin:4px 0 0;color:#666;font-size:13px}
+.summary{padding:10px;text-align:center;font-weight:bold}
+.section{background:#fff;margin:10px;padding:12px;border:1px solid #ccc;border-radius:10px}
+.section h2{margin:0 0 10px;font-size:20px}
+.nameButton{width:48%;margin:1%;min-height:58px;border:0;border-radius:10px;background:#dfeaff;color:#17438f;font-size:17px;font-weight:bold}
+.nameButton.out{background:#ffdede;color:#8b1f1f}
+.destinationButton{width:48%;margin:1%;min-height:54px;border:1px solid #aaa;border-radius:10px;background:#f5f5f5;font-size:17px;font-weight:bold}
+.returnRow{padding:10px 0;border-bottom:1px solid #ddd;overflow:hidden}
+.returnInfo{float:left;width:62%}
+.returnButton{float:right;width:34%;min-height:48px;border:0;border-radius:9px;background:#23864b;color:#fff;font-size:16px;font-weight:bold}
+.clear{clear:both}
+.modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:99;overflow:auto;padding:12px}
+.modal.show{display:block}
+.actionRow{margin-top:14px}
+.actionButton{width:48%;margin:1%;min-height:48px;border:0;border-radius:9px;font-size:16px;font-weight:bold}
+.cancel{background:#ddd}.primary{background:#2864dc;color:#fff}.danger{background:#b83232;color:#fff}
+input,textarea{width:100%;padding:10px;font-size:16px;border:1px solid #aaa;border-radius:8px;box-sizing:border-box}
+textarea{height:220px}
+label{display:block;margin-top:12px;margin-bottom:5px;font-weight:bold}
+.teacherButton{margin-top:10px;padding:8px 14px;border:0;border-radius:8px;background:#ddd;font-weight:bold}
+.small{font-size:12px;color:#666}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>4L Sign Out</h1>
+<p>Tap your name to leave. Tap RETURN below when you come back.</p>
+<button class="teacherButton" onclick="openTeacher()">Teacher</button>
+</div>
+
+<div class="summary">
+<span id="inCount">0</span> in class &nbsp; | &nbsp;
+<span id="outCount">0</span> out &nbsp; | &nbsp;
+<span id="todayCount">0</span> trips today
+</div>
+
+<div class="section">
+<h2>Students</h2>
+<div id="studentList"></div>
+</div>
+
+<div class="section">
+<h2>Currently Out</h2>
+<div id="outList"></div>
+</div>
+
+<div id="leaveScreen" class="modal">
+<h2 id="leaveTitle">Where are you going?</h2>
+<div id="destinationList"></div>
+<label>Other destination</label>
+<input id="otherDestination" type="text">
+<div class="actionRow">
+<button class="actionButton cancel" onclick="closeLeave()">Cancel</button>
+<button class="actionButton primary" onclick="leaveNow()">Leave Room</button>
+</div>
+</div>
+
+<div id="teacherScreen" class="modal">
+<div id="pinArea">
+<h2>Teacher Access</h2>
+<label>PIN</label>
+<input id="pinInput" type="password">
+<div class="actionRow">
+<button class="actionButton cancel" onclick="closeTeacher()">Cancel</button>
+<button class="actionButton primary" onclick="unlockTeacher()">Unlock</button>
+</div>
+<p class="small">Default PIN: 1234</p>
+</div>
+
+<div id="settingsArea" style="display:none">
+<h2>Teacher Settings</h2>
+<label>Student names - one per line</label>
+<textarea id="studentNames"></textarea>
+<label>Destinations - one per line</label>
+<textarea id="destinations" style="height:130px"></textarea>
+<label>Teacher PIN</label>
+<input id="newPin" type="password">
+<div class="actionRow">
+<button class="actionButton cancel" onclick="closeTeacher()">Close</button>
+<button class="actionButton primary" onclick="saveSettings()">Save</button>
+</div>
+<div class="actionRow">
+<button class="actionButton danger" onclick="clearHistory()">Clear History</button>
+<button class="actionButton cancel" onclick="returnEveryone()">Return Everyone</button>
+</div>
+<p id="teacherMessage" class="small"></p>
+</div>
+</div>
+
+<script>
+var defaultStudents=["Abdi","Jason","Lachlan","Azaylea","Bryan","Elliot","Shreeya","Nathan","Sylvia","Suhana","Ritchy","Muhammad","Jackson","Sulaiman","Hugo","Marc","Gio","Zoey","Chloe","Annie","Doris","Jeslyn","Alan","Olivia","Jonathan","Jessica"];
+var defaultDestinations=["Toilet","Drink","Office","Sick Bay","Library","Support Teacher"];
+var settings=readData("v5_settings",null);
+if(!settings){settings={students:defaultStudents,destinations:defaultDestinations,pin:"1234"}}
+var active=readData("v5_active",{});
+var history=readData("v5_history",[]);
+var selectedStudent="";
+var selectedDestination="";
+
+function readData(key,fallback){
+  try{
+    var value=window.localStorage.getItem(key);
+    if(value){return JSON.parse(value)}
+  }catch(e){}
+  return fallback;
+}
+function saveData(){
+  try{
+    window.localStorage.setItem("v5_settings",JSON.stringify(settings));
+    window.localStorage.setItem("v5_active",JSON.stringify(active));
+    window.localStorage.setItem("v5_history",JSON.stringify(history));
+  }catch(e){alert("Could not save data. Turn off Private Browsing.")}
+}
+function safe(text){
+  return String(text).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function attr(text){
+  return String(text).replace(/\\/g,"\\\\").replace(/'/g,"\\'");
+}
+function nowTime(){return new Date().getTime()}
+function minutes(ms){return Math.floor((nowTime()-ms)/60000)}
+function isToday(ms){
+  var a=new Date(ms),b=new Date();
+  return a.getDate()==b.getDate()&&a.getMonth()==b.getMonth()&&a.getFullYear()==b.getFullYear();
+}
+function render(){
+  var html="",i,name,countOut=0,countToday=0,key;
+  for(i=0;i<settings.students.length;i++){
+    name=settings.students[i];
+    if(active[name]){
+      html+='<button class="nameButton out" disabled>'+safe(name)+'<br><span class="small">'+safe(active[name].destination)+' - '+minutes(active[name].leftAt)+' min</span></button>';
+      countOut++;
+    }else{
+      html+='<button class="nameButton" onclick="openLeave(\''+attr(name)+'\')">'+safe(name)+'</button>';
+    }
+  }
+  document.getElementById("studentList").innerHTML=html;
+
+  html="";
+  for(key in active){
+    if(active.hasOwnProperty(key)){
+      html+='<div class="returnRow">';
+      html+='<div class="returnInfo"><b>'+safe(key)+'</b><br><span class="small">'+safe(active[key].destination)+' - '+minutes(active[key].leftAt)+' min</span></div>';
+      html+='<button class="returnButton" onclick="returnStudent(\''+attr(key)+'\')">RETURN</button>';
+      html+='<div class="clear"></div></div>';
+    }
+  }
+  if(countOut===0){html='<p class="small">Everyone is currently in class.</p>'}
+  document.getElementById("outList").innerHTML=html;
+
+  for(i=0;i<history.length;i++){if(isToday(history[i].leftAt)){countToday++}}
+  for(key in active){if(active.hasOwnProperty(key)&&isToday(active[key].leftAt)){countToday++}}
+
+  document.getElementById("inCount").innerHTML=settings.students.length-countOut;
+  document.getElementById("outCount").innerHTML=countOut;
+  document.getElementById("todayCount").innerHTML=countToday;
+}
+function openLeave(name){
+  selectedStudent=name;
+  selectedDestination="";
+  document.getElementById("leaveTitle").innerHTML=safe(name)+": Where are you going?";
+  document.getElementById("otherDestination").value="";
+  var html="",i,d;
+  for(i=0;i<settings.destinations.length;i++){
+    d=settings.destinations[i];
+    html+='<button class="destinationButton" onclick="chooseDestination(\''+attr(d)+'\')">'+safe(d)+'</button>';
+  }
+  document.getElementById("destinationList").innerHTML=html;
+  document.getElementById("leaveScreen").className="modal show";
+  window.scrollTo(0,0);
+}
+function closeLeave(){document.getElementById("leaveScreen").className="modal"}
+function chooseDestination(destination){
+  selectedDestination=destination;
+  leaveNow();
+}
+function leaveNow(){
+  var other=document.getElementById("otherDestination").value;
+  other=other.replace(/^\s+|\s+$/g,"");
+  var destination=other||selectedDestination;
+  if(!destination){alert("Choose a destination.");return}
+  active[selectedStudent]={destination:destination,leftAt:nowTime()};
+  saveData();
+  closeLeave();
+  setTimeout(render,50);
+}
+function returnStudent(name){
+  if(!active[name]){render();return}
+  var end=nowTime();
+  history.push({
+    student:name,
+    destination:active[name].destination,
+    leftAt:active[name].leftAt,
+    returnedAt:end,
+    minutes:Math.max(1,Math.round((end-active[name].leftAt)/60000))
+  });
+  delete active[name];
+  saveData();
+  setTimeout(render,50);
+}
+function openTeacher(){
+  document.getElementById("pinArea").style.display="block";
+  document.getElementById("settingsArea").style.display="none";
+  document.getElementById("pinInput").value="";
+  document.getElementById("teacherScreen").className="modal show";
+}
+function closeTeacher(){document.getElementById("teacherScreen").className="modal"}
+function unlockTeacher(){
+  if(document.getElementById("pinInput").value!=settings.pin){alert("Incorrect PIN.");return}
+  document.getElementById("pinArea").style.display="none";
+  document.getElementById("settingsArea").style.display="block";
+  document.getElementById("studentNames").value=settings.students.join("\n");
+  document.getElementById("destinations").value=settings.destinations.join("\n");
+  document.getElementById("newPin").value=settings.pin;
+}
+function cleanLines(value){
+  var parts=value.split("\n"),result=[],seen={},i,v;
+  for(i=0;i<parts.length;i++){
+    v=parts[i].replace(/^\s+|\s+$/g,"");
+    if(v&&!seen[v]){result.push(v);seen[v]=true}
+  }
+  return result;
+}
+function saveSettings(){
+  var names=cleanLines(document.getElementById("studentNames").value);
+  var dests=cleanLines(document.getElementById("destinations").value);
+  settings.students=names.length?names:defaultStudents;
+  settings.destinations=dests.length?dests:defaultDestinations;
+  settings.pin=document.getElementById("newPin").value||"1234";
+  saveData();
+  document.getElementById("teacherMessage").innerHTML="Settings saved.";
+  render();
+}
+function clearHistory(){
+  history=[];
+  try{window.localStorage.setItem("v5_history","[]")}catch(e){}
+  saveData();
+  document.getElementById("teacherMessage").innerHTML="History cleared.";
+  render();
+}
+function returnEveryone(){
+  var names=[],key,i;
+  for(key in active){if(active.hasOwnProperty(key)){names.push(key)}}
+  for(i=0;i<names.length;i++){returnStudent(names[i])}
+  document.getElementById("teacherMessage").innerHTML="Everyone returned.";
+  render();
+}
+window.onload=function(){render();setInterval(render,30000)};
+</script>
+</body>
+</html>
