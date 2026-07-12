@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>4L Sign Out</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#eef1f5;font-family:Arial,sans-serif;color:#222}
+*{box-sizing:border-box}
+button,input,textarea,select{font-family:Arial,sans-serif}
+.header{height:70px;background:#fff;border-bottom:1px solid #bbb;text-align:center;padding:7px 10px}
+#titleTap{margin:0;font-size:21px;line-height:24px}
+.header p{margin:2px 0;color:#666;font-size:11px}
+.version{font-size:10px;color:#888}
+.summary{height:36px;padding:8px 4px 4px;text-align:center;font-size:13px;font-weight:bold}
+.kiosk{height:calc(100% - 106px);padding:0 8px 8px}
+.box{background:#fff;border:1px solid #bbb;border-radius:10px;padding:8px;overflow:hidden}
+.box h2{margin:0 0 6px;font-size:17px}
+.studentsBox{height:76%;margin-bottom:8px}
+.outBox{height:22%}
+.studentGrid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(9,44px);gap:5px;height:calc(100% - 22px)}
+.studentBtn{width:100%;height:44px;border:0;border-radius:8px;background:#dfeaff;color:#17438f;font-size:13px;font-weight:bold;padding:3px}
+.studentBtn.out{background:#ffdede;color:#8b1f1f}
+.outGrid{font-size:0}
+.outCard{display:inline-block;vertical-align:top;width:23%;margin:1%;border:1px solid #ddd;border-radius:8px;padding:5px;background:#fafafa}
+.outName{font-size:12px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.outDetail{font-size:9px;color:#666;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{font-size:12px;color:#666;padding:6px 0}
+.modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:100;padding:10px;overflow:auto;-webkit-overflow-scrolling:touch}
+.modal.open{display:block}
+.modal h2{margin-top:4px}
+.destBtn{width:48%;margin:1%;min-height:52px;border:1px solid #999;border-radius:9px;background:#f5f5f5;font-size:16px;font-weight:bold}
+.action{width:48%;margin:1%;min-height:46px;border:0;border-radius:9px;font-size:15px;font-weight:bold}
+.blue{background:#2864dc;color:#fff}
+.green{background:#23864b;color:#fff}
+.grey{background:#ddd;color:#222}
+.red{background:#b83232;color:#fff}
+label{display:block;margin:12px 0 5px;font-weight:bold}
+input,textarea,select{width:100%;padding:10px;font-size:16px;border:1px solid #999;border-radius:8px}
+textarea{height:210px;resize:vertical}
+.small{font-size:12px;color:#666;line-height:1.4}
+.tableWrap{max-height:300px;overflow:auto;border:1px solid #ccc;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:6px;border-bottom:1px solid #ddd;text-align:left}
+.groupRow td{background:#eaf1ff;font-weight:bold}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 id="titleTap">4L Sign Out</h1>
+  <p>Tap your name to leave. Tap your red name again to return.</p>
+  <div class="version">Clean Build 1</div>
+</div>
+
+<div class="summary">
+  <span id="inCount">0</span> in class &nbsp; | &nbsp;
+  <span id="outCount">0</span> out &nbsp; | &nbsp;
+  <span id="todayCount">0</span> trips today
+</div>
+
+<div class="kiosk">
+  <div class="box studentsBox">
+    <h2>Students</h2>
+    <div id="studentGrid" class="studentGrid"></div>
+  </div>
+
+  <div class="box outBox">
+    <h2>Currently Out</h2>
+    <div id="outGrid" class="outGrid"></div>
+  </div>
+</div>
+
+<div id="leaveModal" class="modal">
+  <h2 id="leaveHeading">Where are you going?</h2>
+  <div id="destinationGrid"></div>
+  <label for="otherDestination">Other destination</label>
+  <input id="otherDestination" type="text">
+  <p>
+    <button id="leaveCancel" class="action grey">Cancel</button>
+    <button id="leaveConfirm" class="action blue">Leave Room</button>
+  </p>
+</div>
+
+<div id="returnModal" class="modal">
+  <h2 id="returnHeading">Return to class?</h2>
+  <p id="returnDetails"></p>
+  <p>
+    <button id="returnCancel" class="action grey">Cancel</button>
+    <button id="returnConfirm" class="action green">Return</button>
+  </p>
+</div>
+
+<div id="teacherModal" class="modal">
+  <div id="pinPanel">
+    <h2>Teacher Access</h2>
+    <label for="pinInput">PIN</label>
+    <input id="pinInput" type="password" inputmode="numeric">
+    <p>
+      <button id="pinCancel" class="action grey">Cancel</button>
+      <button id="pinUnlock" class="action blue">Unlock</button>
+    </p>
+    <p class="small">Default PIN: 1234</p>
+  </div>
+
+  <div id="teacherPanel" style="display:none">
+    <h2>Teacher Settings</h2>
+
+    <label for="studentNames">Student names — one per line</label>
+    <textarea id="studentNames"></textarea>
+
+    <label for="destinations">Destinations — one per line</label>
+    <textarea id="destinations" style="height:130px"></textarea>
+
+    <label for="newPin">Teacher PIN</label>
+    <input id="newPin" type="password" inputmode="numeric">
+
+    <p>
+      <button id="teacherClose" class="action grey">Close</button>
+      <button id="saveSettings" class="action blue">Save</button>
+    </p>
+
+    <p>
+      <button id="returnEveryone" class="action grey">Return Everyone</button>
+      <button id="clearHistory" class="action red">Clear History</button>
+    </p>
+
+    <label for="historySort">History order</label>
+    <select id="historySort">
+      <option value="time">By time</option>
+      <option value="name">By student name</option>
+    </select>
+
+    <p>
+      <button id="viewHistory" class="action blue">View History</button>
+      <button id="hideHistory" class="action grey">Hide History</button>
+    </p>
+
+    <div id="historyPanel" style="display:none">
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr><th>Student / Trip</th><th>Where</th><th>Left</th><th>Returned</th><th>Min</th></tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <label for="exportSort">Export order</label>
+    <select id="exportSort">
+      <option value="time">By time</option>
+      <option value="name">By student name</option>
+    </select>
+
+    <p>
+      <button id="exportToday" class="action blue">Export Today</button>
+      <button id="hideExport" class="action grey">Hide Export</button>
+    </p>
+
+    <div id="exportPanel" style="display:none">
+      <p class="small">Tap inside the box, choose Select All, then Copy.</p>
+      <textarea id="exportText" style="height:180px"></textarea>
+    </div>
+
+    <p id="teacherStatus" class="small"></p>
+  </div>
+</div>
+
+<script>
+(function(){
+var DEFAULT_STUDENTS=["Abdi", "Jason", "Lachlan", "Azaylea", "Bryan", "Elliot", "Shreeya", "Nathan", "Sylvia", "Suhana", "Ritchy", "Muhammad", "Jackson", "Sulaiman", "Hugo", "Marc", "Gio", "Zoey", "Chloe", "Annie", "Doris", "Jeslyn", "Alan", "Olivia", "Jonathan", "Jessica"];
+var DEFAULT_DESTINATIONS=["Toilet","Drink","Office","Sick Bay","Library","Support Teacher"];
+var settings=load("clean_settings",{students:DEFAULT_STUDENTS,destinations:DEFAULT_DESTINATIONS,pin:"1234"});
+var active=load("clean_active",[]);
+var history=load("clean_history",[]);
+var selectedName="";
+var selectedDestination="";
+var tapCount=0;
+var tapTimer=null;
+
+function el(id){return document.getElementById(id)}
+function load(key,fallback){
+  try{var value=window.localStorage.getItem(key);if(value){return JSON.parse(value)}}catch(e){}
+  return fallback;
+}
+function save(){
+  try{
+    window.localStorage.setItem("clean_settings",JSON.stringify(settings));
+    window.localStorage.setItem("clean_active",JSON.stringify(active));
+    window.localStorage.setItem("clean_history",JSON.stringify(history));
+  }catch(e){alert("Could not save. Make sure Private Browsing is off.")}
+}
+function clearNode(node){while(node.firstChild){node.removeChild(node.firstChild)}}
+function addText(node,value){node.appendChild(document.createTextNode(String(value)))}
+function now(){return new Date().getTime()}
+function minsSince(time){return Math.floor((now()-time)/60000)}
+function findActive(name){
+  var i;
+  for(i=0;i<active.length;i++){if(active[i].name===name){return i}}
+  return -1;
+}
+function isToday(time){
+  var a=new Date(time),b=new Date();
+  return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+}
+function formatDateTime(time){
+  var d=new Date(time);
+  return ("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+}
+function cleanLines(value){
+  var raw=value.split("\n"),result=[],seen={},i,v;
+  for(i=0;i<raw.length;i++){
+    v=raw[i].replace(/^\s+|\s+$/g,"");
+    if(v&&!seen[v]){result.push(v);seen[v]=true}
+  }
+  return result;
+}
+function openModal(id){el(id).className="modal open";window.scrollTo(0,0)}
+function closeModal(id){el(id).className="modal"}
+
+function render(){
+  var grid=el("studentGrid"),out=el("outGrid"),i,name,index,button,card,n,d,todayTrips=0;
+  clearNode(grid);
+  clearNode(out);
+
+  for(i=0;i<settings.students.length;i++){
+    name=settings.students[i];
+    index=findActive(name);
+    button=document.createElement("button");
+    button.type="button";
+    button.className=index>=0?"studentBtn out":"studentBtn";
+    button.studentName=name;
+    button.onclick=function(){
+      var idx=findActive(this.studentName);
+      if(idx>=0){openReturn(this.studentName)}else{openLeave(this.studentName)}
+    };
+    addText(button,name);
+    grid.appendChild(button);
+  }
+
+  if(active.length===0){
+    d=document.createElement("div");
+    d.className="empty";
+    addText(d,"Everyone is currently in class.");
+    out.appendChild(d);
+  }else{
+    for(i=0;i<active.length;i++){
+      card=document.createElement("div");
+      card.className="outCard";
+      n=document.createElement("div");
+      n.className="outName";
+      addText(n,active[i].name);
+      d=document.createElement("div");
+      d.className="outDetail";
+      addText(d,active[i].destination+" · "+minsSince(active[i].leftAt)+" min");
+      card.appendChild(n);
+      card.appendChild(d);
+      out.appendChild(card);
+    }
+  }
+
+  for(i=0;i<history.length;i++){if(isToday(history[i].leftAt)){todayTrips++}}
+  for(i=0;i<active.length;i++){if(isToday(active[i].leftAt)){todayTrips++}}
+  el("inCount").innerHTML=String(settings.students.length-active.length);
+  el("outCount").innerHTML=String(active.length);
+  el("todayCount").innerHTML=String(todayTrips);
+}
+
+function openLeave(name){
+  var i,b;
+  selectedName=name;
+  selectedDestination="";
+  el("leaveHeading").innerHTML=name+": Where are you going?";
+  el("otherDestination").value="";
+  clearNode(el("destinationGrid"));
+  for(i=0;i<settings.destinations.length;i++){
+    b=document.createElement("button");
+    b.type="button";
+    b.className="destBtn";
+    b.destinationValue=settings.destinations[i];
+    b.onclick=function(){selectedDestination=this.destinationValue;completeLeave()};
+    addText(b,settings.destinations[i]);
+    el("destinationGrid").appendChild(b);
+  }
+  openModal("leaveModal");
+}
+function completeLeave(){
+  var other=el("otherDestination").value.replace(/^\s+|\s+$/g,"");
+  var destination=other||selectedDestination;
+  if(!destination){alert("Choose a destination.");return}
+  if(findActive(selectedName)<0){
+    active.push({name:selectedName,destination:destination,leftAt:now()});
+  }
+  save();
+  closeModal("leaveModal");
+  render();
+}
+function openReturn(name){
+  var index=findActive(name);
+  if(index<0){render();return}
+  selectedName=name;
+  el("returnHeading").innerHTML=name+": Return to class?";
+  el("returnDetails").innerHTML="Destination: "+active[index].destination+"<br>Time out: "+minsSince(active[index].leftAt)+" minute(s)";
+  openModal("returnModal");
+}
+function completeReturn(){
+  var index=findActive(selectedName),item,end;
+  if(index<0){closeModal("returnModal");render();return}
+  item=active[index];
+  end=now();
+  history.push({name:item.name,destination:item.destination,leftAt:item.leftAt,returnedAt:end,minutes:Math.max(1,Math.round((end-item.leftAt)/60000))});
+  active.splice(index,1);
+  save();
+  closeModal("returnModal");
+  render();
+}
+
+function addCell(row,value){
+  var cell=document.createElement("td");
+  addText(cell,value);
+  row.appendChild(cell);
+}
+function renderHistory(){
+  var body=el("historyBody"),mode=el("historySort").value,items,i,item,row,groups,names,name,records,j,total,head;
+  clearNode(body);
+  if(history.length===0){
+    row=document.createElement("tr");
+    head=document.createElement("td");
+    head.colSpan=5;
+    addText(head,"No history yet.");
+    row.appendChild(head);
+    body.appendChild(row);
+    return;
+  }
+  if(mode==="time"){
+    items=history.slice(0);
+    items.sort(function(a,b){return b.leftAt-a.leftAt});
+    for(i=0;i<items.length;i++){
+      item=items[i];
+      row=document.createElement("tr");
+      addCell(row,item.name);
+      addCell(row,item.destination);
+      addCell(row,formatDateTime(item.leftAt));
+      addCell(row,formatDateTime(item.returnedAt));
+      addCell(row,item.minutes);
+      body.appendChild(row);
+    }
+  }else{
+    groups={};names=[];
+    for(i=0;i<history.length;i++){
+      item=history[i];
+      if(!groups[item.name]){groups[item.name]=[];names.push(item.name)}
+      groups[item.name].push(item);
+    }
+    names.sort();
+    for(i=0;i<names.length;i++){
+      name=names[i];
+      records=groups[name];
+      total=0;
+      for(j=0;j<records.length;j++){total+=parseInt(records[j].minutes,10)||0}
+      row=document.createElement("tr");
+      row.className="groupRow";
+      head=document.createElement("td");
+      head.colSpan=5;
+      addText(head,name+" — "+records.length+" trip"+(records.length===1?"":"s")+" — "+total+" total min");
+      row.appendChild(head);
+      body.appendChild(row);
+      records.sort(function(a,b){return b.leftAt-a.leftAt});
+      for(j=0;j<records.length;j++){
+        item=records[j];
+        row=document.createElement("tr");
+        addCell(row,"Trip "+(j+1));
+        addCell(row,item.destination);
+        addCell(row,formatDateTime(item.leftAt));
+        addCell(row,formatDateTime(item.returnedAt));
+        addCell(row,item.minutes);
+        body.appendChild(row);
+      }
+    }
+  }
+}
+function csvValue(value){return '"'+String(value).replace(/"/g,'""')+'"'}
+function buildExport(){
+  var mode=el("exportSort").value,items=[],lines=[],i,item,groups,names,name,records,j,total;
+  for(i=0;i<history.length;i++){if(isToday(history[i].leftAt)){items.push(history[i])}}
+  if(mode==="time"){
+    lines.push("Student,Destination,Left,Returned,Minutes");
+    items.sort(function(a,b){return a.leftAt-b.leftAt});
+    for(i=0;i<items.length;i++){
+      item=items[i];
+      lines.push([csvValue(item.name),csvValue(item.destination),csvValue(formatDateTime(item.leftAt)),csvValue(formatDateTime(item.returnedAt)),String(item.minutes)].join(","));
+    }
+  }else{
+    lines.push("Student,Trips,Total Minutes,Destination,Left,Returned,Trip Minutes");
+    groups={};names=[];
+    for(i=0;i<items.length;i++){
+      item=items[i];
+      if(!groups[item.name]){groups[item.name]=[];names.push(item.name)}
+      groups[item.name].push(item);
+    }
+    names.sort();
+    for(i=0;i<names.length;i++){
+      name=names[i];records=groups[name];total=0;
+      for(j=0;j<records.length;j++){total+=parseInt(records[j].minutes,10)||0}
+      records.sort(function(a,b){return a.leftAt-b.leftAt});
+      for(j=0;j<records.length;j++){
+        item=records[j];
+        lines.push([
+          csvValue(name),
+          j===0?String(records.length):"",
+          j===0?String(total):"",
+          csvValue(item.destination),
+          csvValue(formatDateTime(item.leftAt)),
+          csvValue(formatDateTime(item.returnedAt)),
+          String(item.minutes)
+        ].join(","));
+      }
+    }
+  }
+  return lines.join("\n");
+}
+
+el("leaveCancel").onclick=function(){closeModal("leaveModal")};
+el("leaveConfirm").onclick=completeLeave;
+el("returnCancel").onclick=function(){closeModal("returnModal")};
+el("returnConfirm").onclick=completeReturn;
+
+el("titleTap").onclick=function(){
+  tapCount++;
+  if(tapTimer){window.clearTimeout(tapTimer)}
+  tapTimer=window.setTimeout(function(){tapCount=0},1200);
+  if(tapCount>=3){
+    tapCount=0;
+    el("pinPanel").style.display="block";
+    el("teacherPanel").style.display="none";
+    el("pinInput").value="";
+    openModal("teacherModal");
+  }
+};
+el("pinCancel").onclick=function(){closeModal("teacherModal")};
+el("pinUnlock").onclick=function(){
+  if(el("pinInput").value!==String(settings.pin)){alert("Incorrect PIN.");return}
+  el("pinPanel").style.display="none";
+  el("teacherPanel").style.display="block";
+  el("studentNames").value=settings.students.join("\n");
+  el("destinations").value=settings.destinations.join("\n");
+  el("newPin").value=settings.pin;
+};
+el("teacherClose").onclick=function(){closeModal("teacherModal")};
+el("saveSettings").onclick=function(){
+  var names=cleanLines(el("studentNames").value),dests=cleanLines(el("destinations").value);
+  settings.students=names.length?names:DEFAULT_STUDENTS;
+  settings.destinations=dests.length?dests:DEFAULT_DESTINATIONS;
+  settings.pin=el("newPin").value||"1234";
+  save();render();el("teacherStatus").innerHTML="Settings saved.";
+};
+el("returnEveryone").onclick=function(){
+  var end=now(),i,item;
+  for(i=0;i<active.length;i++){
+    item=active[i];
+    history.push({name:item.name,destination:item.destination,leftAt:item.leftAt,returnedAt:end,minutes:Math.max(1,Math.round((end-item.leftAt)/60000))});
+  }
+  active=[];save();render();el("teacherStatus").innerHTML="Everyone returned.";
+};
+el("clearHistory").onclick=function(){
+  history=[];save();render();renderHistory();el("teacherStatus").innerHTML="History cleared.";
+};
+el("viewHistory").onclick=function(){renderHistory();el("historyPanel").style.display="block"};
+el("hideHistory").onclick=function(){el("historyPanel").style.display="none"};
+el("historySort").onchange=function(){if(el("historyPanel").style.display==="block"){renderHistory()}};
+el("exportToday").onclick=function(){el("exportText").value=buildExport();el("exportPanel").style.display="block"};
+el("hideExport").onclick=function(){el("exportPanel").style.display="none"};
+el("exportSort").onchange=function(){if(el("exportPanel").style.display==="block"){el("exportText").value=buildExport()}};
+
+render();
+window.setInterval(render,30000);
+})();
+</script>
+</body>
+</html>
