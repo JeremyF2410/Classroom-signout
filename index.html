@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#eef3f7">
+<title>4L Sign Out</title>
+<style>
+html,body{margin:0;padding:0;background:#eef3f7;color:#172033;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;min-height:100%}
+*{box-sizing:border-box}
+button,input,textarea{font-family:inherit}
+header{background:#fff;border-bottom:1px solid #d8dee8;padding:14px 16px;position:sticky;top:0;z-index:10}
+.header-row{display:flex;align-items:center;justify-content:space-between}
+#titleTap{font-size:25px;font-weight:800;margin:0;user-select:none;-webkit-user-select:none}
+.subtitle{font-size:13px;color:#667085;margin-top:3px}
+main{max-width:980px;margin:0 auto;padding:14px}
+.stats{display:flex;gap:10px;margin-bottom:14px}
+.stat{flex:1;background:#fff;border:1px solid #d8dee8;border-radius:16px;padding:12px;text-align:center}
+.stat strong{display:block;font-size:27px}
+.stat span{font-size:13px;color:#667085}
+.card{background:#fff;border:1px solid #d8dee8;border-radius:18px;padding:14px;margin-bottom:14px}
+.card h2{margin:0 0 12px;font-size:20px}
+.student-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.student{min-height:66px;border:0;border-radius:14px;padding:8px;font-size:18px;font-weight:800;background:#eaf1ff;color:#17438f}
+.student.out{background:#ffe5e5;color:#8d1f1f}
+.student.warn{background:#fff0d7;color:#8b4700}
+.student small{display:block;font-size:12px;margin-top:4px}
+.current-row{display:flex;justify-content:space-between;gap:12px;padding:11px 2px;border-bottom:1px solid #e6e9ef}
+.current-row:last-child{border-bottom:0}
+.muted{color:#667085}
+.empty{text-align:center;color:#667085;padding:18px}
+.modal{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(20,27,40,.62);z-index:50;padding:14px;overflow:auto;-webkit-overflow-scrolling:touch}
+.modal.show{display:block}
+.modal-card{width:100%;max-width:620px;margin:18px auto 40px auto;background:#fff;border-radius:20px;padding:18px;overflow:visible}
+.modal-card h2{margin-top:0}
+.dest-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.dest{min-height:58px;border:2px solid #d8dee8;border-radius:14px;background:#f8fafc;font-size:18px;font-weight:800}
+.dest.selected{border-color:#2864dc;background:#dce8ff;color:#17438f}
+label{display:block;font-weight:800;margin:12px 0 6px}
+input,textarea{width:100%;border:1px solid #ccd4df;border-radius:12px;padding:11px;font-size:16px}
+textarea{min-height:190px;resize:vertical}
+textarea.short{min-height:120px}
+.actions{display:flex;gap:10px;margin-top:15px}
+.actions button{flex:1}
+.btn{border:0;border-radius:13px;min-height:48px;padding:10px 14px;font-weight:800;font-size:16px}
+.primary{background:#2864dc;color:#fff}
+.secondary{background:#e7ebf0;color:#172033}
+.success{background:#23864b;color:#fff}
+.danger{background:#b83232;color:#fff}
+.warning{background:#c96d00;color:#fff}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.tools .btn{min-height:42px;font-size:14px}
+.note{font-size:12px;color:#667085;line-height:1.45}
+hr{border:0;border-top:1px solid #e2e7ed;margin:18px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid #e2e7ed}
+th{color:#667085}
+.table-wrap{overflow-x:auto}
+.section-title{margin-top:18px}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef2f6;color:#465467;font-size:12px;font-weight:700}
+@media(max-width:760px){.student-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){.student-grid{grid-template-columns:repeat(2,1fr)}.stats{gap:7px}.stat strong{font-size:24px}.modal{padding:8px}.modal-card{margin:8px auto 24px auto;padding:14px}.dest-grid{grid-template-columns:1fr}.dest{min-height:54px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-row">
+    <div>
+      <div id="titleTap">4L Sign Out</div>
+      <div class="subtitle">Tap your name when leaving or returning</div>
+    </div>
+    <span class="badge" id="clockBadge"></span>
+  </div>
+</header>
+
+<main>
+  <div class="stats">
+    <div class="stat"><strong id="inCount">0</strong><span>In class</span></div>
+    <div class="stat"><strong id="outCount">0</strong><span>Out now</span></div>
+    <div class="stat"><strong id="todayCount">0</strong><span>Trips today</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Students</h2>
+    <div id="studentGrid" class="student-grid"></div>
+  </div>
+
+  <div class="card">
+    <h2>Currently Out</h2>
+    <div id="currentOut"></div>
+  </div>
+</main>
+
+<div id="leaveModal" class="modal">
+  <div class="modal-card">
+    <h2 id="leaveHeading"></h2>
+    <div id="destGrid" class="dest-grid"></div>
+    <label for="otherDestination">Other destination</label>
+    <input id="otherDestination" placeholder="Type destination">
+    <div class="actions">
+      <button class="btn secondary" onclick="closeModal('leaveModal')">Cancel</button>
+      <button class="btn primary" onclick="confirmLeave()">Leave Room</button>
+    </div>
+  </div>
+</div>
+
+<div id="returnModal" class="modal">
+  <div class="modal-card">
+    <h2 id="returnHeading"></h2>
+    <p id="returnSummary"></p>
+    <div class="actions">
+      <button class="btn secondary" onclick="closeModal('returnModal')">Cancel</button>
+      <button class="btn success" onclick="confirmReturn()">I'm Back</button>
+    </div>
+  </div>
+</div>
+
+<div id="teacherModal" class="modal">
+  <div class="modal-card">
+    <div id="pinScreen">
+      <h2>Teacher Access</h2>
+      <label for="pinInput">PIN</label>
+      <input id="pinInput" type="password" inputmode="numeric" placeholder="Enter PIN">
+      <div class="actions">
+        <button class="btn secondary" onclick="closeModal('teacherModal')">Cancel</button>
+        <button class="btn primary" onclick="unlockTeacher()">Unlock</button>
+      </div>
+      <p class="note">Default PIN: 1234</p>
+    </div>
+
+    <div id="teacherContent" style="display:none">
+      <h2>Teacher Settings</h2>
+      <label for="className">Class name</label>
+      <input id="className">
+
+      <label for="studentNames">Student names — one per line</label>
+      <textarea id="studentNames"></textarea>
+
+      <label for="destinations">Destinations — one per line</label>
+      <textarea id="destinations" class="short"></textarea>
+
+      <label for="alertMinutes">Highlight after this many minutes</label>
+      <input id="alertMinutes" type="number" min="1" max="120">
+
+      <label for="newPin">Teacher PIN</label>
+      <input id="newPin" type="password" inputmode="numeric">
+
+      <div class="actions">
+        <button class="btn secondary" onclick="closeModal('teacherModal')">Close</button>
+        <button class="btn primary" onclick="saveSettings()">Save Settings</button>
+      </div>
+
+      <hr>
+
+      <div class="tools">
+        <button class="btn warning" onclick="resetAllStudents()">Return Everyone</button>
+        <button class="btn secondary" onclick="toggleHistory()">View History</button>
+        <button class="btn secondary" onclick="showWeeklyTotals()">Weekly Totals</button>
+        <button class="btn secondary" onclick="showCsv()">Export CSV</button>
+        <button class="btn danger" onclick="clearHistory()">Clear History</button>
+      </div>
+
+      <p class="note">Teacher access is hidden. Tap the title five times quickly, then enter your PIN.</p>
+
+      <div id="historyArea" style="display:none">
+        <h3 class="section-title">History</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Student</th><th>Destination</th><th>Left</th><th>Returned</th><th>Minutes</th></tr></thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="weeklyArea" style="display:none">
+        <h3 class="section-title">Last 7 Days</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Student</th><th>Trips</th><th>Total minutes</th></tr></thead>
+            <tbody id="weeklyBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="csvArea" style="display:none">
+        <h3 class="section-title">CSV Export</h3>
+        <p class="note">Tap inside, Select All, then Copy. Paste into Excel or OneDrive.</p>
+        <textarea id="csvText"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var defaultStudents = ["Abdi", "Jason", "Lachlan", "Azaylea", "Bryan", "Elliot", "Shreeya", "Nathan", "Sylvia", "Suhana", "Ritchy", "Muhammad", "Jackson", "Sulaiman", "Hugo", "Marc", "Gio", "Zoey", "Chloe", "Annie", "Doris", "Jeslyn", "Alan", "Olivia", "Jonathan", "Jessica"];
+var defaults = {
+  className: "4L Sign Out",
+  students: defaultStudents,
+  destinations: ["Toilet","Drink","Office","Sick Bay","Library","Support Teacher"],
+  alertMinutes: 10,
+  pin: "1234"
+};
+
+var settings = loadJson("classsign_settings", defaults);
+var active = loadJson("classsign_active", {});
+var history = loadJson("classsign_history", []);
+var selectedStudent = "";
+var selectedDestination = "";
+var titleTapCount = 0;
+var titleTapTimer = null;
+
+function byId(id){return document.getElementById(id)}
+function loadJson(key, fallback){
+  try{
+    var value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  }catch(e){return fallback}
+}
+function saveAll(){
+  try{
+    localStorage.setItem("classsign_settings", JSON.stringify(settings));
+    localStorage.setItem("classsign_active", JSON.stringify(active));
+    localStorage.setItem("classsign_history", JSON.stringify(history));
+  }catch(e){
+    alert("This iPad could not save the data. Make sure Private Browsing is off.");
+  }
+}
+function esc(s){
+  return String(s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c];
+  });
+}
+function minsSince(ms){return Math.floor((new Date().getTime()-ms)/60000)}
+function timeOnly(ms){return new Date(ms).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}
+function dateTime(ms){return new Date(ms).toLocaleString([], {day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
+function sameDay(ms){
+  var a = new Date(ms), b = new Date();
+  return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+}
+function countKeys(obj){var n=0,k;for(k in obj){if(obj.hasOwnProperty(k))n++}return n}
+function openModal(id){byId(id).className="modal show";window.scrollTo(0,0)}
+function closeModal(id){byId(id).className="modal"}
+
+function render(){
+  byId("titleTap").innerHTML = esc(settings.className || "4L Sign Out");
+  byId("clockBadge").innerHTML = timeOnly(new Date().getTime());
+
+  var grid=byId("studentGrid");
+  grid.innerHTML="";
+  var i,name,button,elapsed;
+  for(i=0;i<settings.students.length;i++){
+    name=settings.students[i];
+    button=document.createElement("button");
+    button.className="student";
+    if(active[name]){
+      elapsed=minsSince(active[name].leftAt);
+      button.className += elapsed>=parseInt(settings.alertMinutes,10) ? " warn" : " out";
+      button.innerHTML=esc(name)+"<small>"+esc(active[name].destination)+" · "+elapsed+" min</small>";
+    }else{
+      button.innerHTML=esc(name);
+    }
+    button.setAttribute("data-name",name);
+    button.onclick=function(){chooseStudent(this.getAttribute("data-name"))};
+    grid.appendChild(button);
+  }
+
+  var outNames=[],k;
+  for(k in active){if(active.hasOwnProperty(k))outNames.push(k)}
+  byId("inCount").innerHTML=Math.max(0,settings.students.length-outNames.length);
+  byId("outCount").innerHTML=outNames.length;
+
+  var today=0;
+  for(i=0;i<history.length;i++){if(sameDay(history[i].leftAt))today++}
+  for(i=0;i<outNames.length;i++){if(sameDay(active[outNames[i]].leftAt))today++}
+  byId("todayCount").innerHTML=today;
+
+  var out=byId("currentOut");
+  if(outNames.length===0){
+    out.innerHTML='<div class="empty">Everyone is currently in class.</div>';
+  }else{
+    var html="";
+    for(i=0;i<outNames.length;i++){
+      name=outNames[i];
+      html+='<div class="current-row"><div><strong>'+esc(name)+'</strong><br><span class="muted">'+esc(active[name].destination)+'</span></div><div style="text-align:right"><strong>'+minsSince(active[name].leftAt)+' min</strong><br><span class="muted">'+timeOnly(active[name].leftAt)+'</span></div></div>';
+    }
+    out.innerHTML=html;
+  }
+}
+
+function chooseStudent(name){
+  selectedStudent=name;
+  if(active[name]){openReturn()}else{openLeave()}
+}
+function openLeave(){
+  selectedDestination="";
+  byId("leaveHeading").innerHTML=esc(selectedStudent)+": Where are you going?";
+  byId("otherDestination").value="";
+  var grid=byId("destGrid"),i,d,b;
+  grid.innerHTML="";
+  for(i=0;i<settings.destinations.length;i++){
+    d=settings.destinations[i];
+    b=document.createElement("button");
+    b.className="dest";
+    b.innerHTML=esc(d);
+    b.setAttribute("data-destination",d);
+    b.onclick=function(){
+      selectedDestination=this.getAttribute("data-destination");
+      var all=document.getElementsByClassName("dest"),j;
+      for(j=0;j<all.length;j++){all[j].className="dest"}
+      this.className="dest selected";
+      byId("otherDestination").value="";
+    };
+    grid.appendChild(b);
+  }
+  openModal("leaveModal");
+}
+function confirmLeave(){
+  var other=byId("otherDestination").value.replace(/^\s+|\s+$/g,"");
+  var destination=other||selectedDestination;
+  if(!destination){alert("Please choose a destination.");return}
+  active[selectedStudent]={destination:destination,leftAt:new Date().getTime()};
+  saveAll();
+  closeModal("leaveModal");
+  render();
+}
+function openReturn(){
+  var item=active[selectedStudent];
+  byId("returnHeading").innerHTML=esc(selectedStudent)+": Return to class?";
+  byId("returnSummary").innerHTML="You went to "+esc(item.destination)+" and have been out for "+minsSince(item.leftAt)+" minute(s).";
+  openModal("returnModal");
+}
+function confirmReturn(){
+  var item=active[selectedStudent];
+  var returnedAt=new Date().getTime();
+  history.unshift({
+    student:selectedStudent,
+    destination:item.destination,
+    leftAt:item.leftAt,
+    returnedAt:returnedAt,
+    minutes:Math.max(1,Math.round((returnedAt-item.leftAt)/60000))
+  });
+  delete active[selectedStudent];
+  saveAll();
+  closeModal("returnModal");
+  render();
+}
+
+function titleTapped(){
+  titleTapCount++;
+  if(titleTapTimer){clearTimeout(titleTapTimer)}
+  titleTapTimer=setTimeout(function(){titleTapCount=0},1600);
+  if(titleTapCount>=5){
+    titleTapCount=0;
+    byId("pinScreen").style.display="block";
+    byId("teacherContent").style.display="none";
+    byId("pinInput").value="";
+    openModal("teacherModal");
+  }
+}
+byId("titleTap").onclick=titleTapped;
+
+function unlockTeacher(){
+  if(byId("pinInput").value!==String(settings.pin)){alert("Incorrect PIN.");return}
+  byId("pinScreen").style.display="none";
+  byId("teacherContent").style.display="block";
+  byId("className").value=settings.className;
+  byId("studentNames").value=settings.students.join("\n");
+  byId("destinations").value=settings.destinations.join("\n");
+  byId("alertMinutes").value=settings.alertMinutes;
+  byId("newPin").value=settings.pin;
+}
+function saveSettings(){
+  var studentLines=byId("studentNames").value.split("\n");
+  var destLines=byId("destinations").value.split("\n");
+  var students=[],destinations=[],seen={},i,v;
+  for(i=0;i<studentLines.length;i++){
+    v=studentLines[i].replace(/^\s+|\s+$/g,"");
+    if(v && !seen["s"+v]){students.push(v);seen["s"+v]=true}
+  }
+  seen={};
+  for(i=0;i<destLines.length;i++){
+    v=destLines[i].replace(/^\s+|\s+$/g,"");
+    if(v && !seen["d"+v]){destinations.push(v);seen["d"+v]=true}
+  }
+  settings={
+    className:byId("className").value.replace(/^\s+|\s+$/g,"")||"4L Sign Out",
+    students:students,
+    destinations:destinations.length?destinations:defaults.destinations,
+    alertMinutes:Math.max(1,parseInt(byId("alertMinutes").value,10)||10),
+    pin:byId("newPin").value||"1234"
+  };
+  for(v in active){if(active.hasOwnProperty(v) && settings.students.indexOf(v)===-1){delete active[v]}}
+  saveAll();render();alert("Settings saved.");
+}
+function resetAllStudents(){
+  if(!confirm("Return every student currently marked as out?"))return;
+  var now=new Date().getTime(),name,item;
+  for(name in active){
+    if(active.hasOwnProperty(name)){
+      item=active[name];
+      history.unshift({student:name,destination:item.destination,leftAt:item.leftAt,returnedAt:now,minutes:Math.max(1,Math.round((now-item.leftAt)/60000))});
+    }
+  }
+  active={};
+  saveAll();render();alert("Everyone has been returned.");
+}
+function toggleHistory(){
+  var area=byId("historyArea");
+  area.style.display=area.style.display==="none"?"block":"none";
+  byId("weeklyArea").style.display="none";
+  byId("csvArea").style.display="none";
+  var body=byId("historyBody"),html="",i,x;
+  if(history.length===0){html='<tr><td colspan="5">No history yet.</td></tr>'}
+  else{
+    for(i=0;i<history.length;i++){
+      x=history[i];
+      html+='<tr><td>'+esc(x.student)+'</td><td>'+esc(x.destination)+'</td><td>'+dateTime(x.leftAt)+'</td><td>'+dateTime(x.returnedAt)+'</td><td>'+x.minutes+'</td></tr>';
+    }
+  }
+  body.innerHTML=html;
+}
+function showWeeklyTotals(){
+  byId("historyArea").style.display="none";
+  byId("csvArea").style.display="none";
+  byId("weeklyArea").style.display="block";
+  var since=new Date().getTime()-(7*24*60*60*1000),totals={},i,x,name,rows=[];
+  for(i=0;i<history.length;i++){
+    x=history[i];
+    if(x.leftAt>=since){
+      if(!totals[x.student])totals[x.student]={trips:0,minutes:0};
+      totals[x.student].trips++;
+      totals[x.student].minutes+=parseInt(x.minutes,10)||0;
+    }
+  }
+  for(name in totals){if(totals.hasOwnProperty(name))rows.push({name:name,trips:totals[name].trips,minutes:totals[name].minutes})}
+  rows.sort(function(a,b){return b.minutes-a.minutes});
+  var html="";
+  if(rows.length===0){html='<tr><td colspan="3">No trips in the last 7 days.</td></tr>'}
+  else{
+    for(i=0;i<rows.length;i++){html+='<tr><td>'+esc(rows[i].name)+'</td><td>'+rows[i].trips+'</td><td>'+rows[i].minutes+'</td></tr>'}
+  }
+  byId("weeklyBody").innerHTML=html;
+}
+function csvEscape(v){return '"'+String(v).replace(/"/g,'""')+'"'}
+function showCsv(){
+  byId("historyArea").style.display="none";
+  byId("weeklyArea").style.display="none";
+  byId("csvArea").style.display="block";
+  var lines=["Student,Destination,Left,Returned,Minutes"],i,x;
+  for(i=history.length-1;i>=0;i--){
+    x=history[i];
+    lines.push([csvEscape(x.student),csvEscape(x.destination),csvEscape(dateTime(x.leftAt)),csvEscape(dateTime(x.returnedAt)),x.minutes].join(","));
+  }
+  byId("csvText").value=lines.join("\n");
+}
+function clearHistory(){
+  if(!confirm("Permanently clear all completed history?"))return;
+  history=[];
+  try{
+    localStorage.removeItem("classsign_history");
+    localStorage.setItem("classsign_history","[]");
+  }catch(e){}
+  saveAll();
+  byId("historyBody").innerHTML='<tr><td colspan="5">No history yet.</td></tr>';
+  byId("weeklyBody").innerHTML='<tr><td colspan="3">No trips in the last 7 days.</td></tr>';
+  byId("csvText").value="Student,Destination,Left,Returned,Minutes";
+  render();
+  alert("History cleared.");
+}
+
+setInterval(render,30000);
+render();
+</script>
+</body>
+</html>
