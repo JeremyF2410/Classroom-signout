@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#eef3f7">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<title>4L Sign Out Split PWA</title>
+<style>
+:root {
+  --bg:#eef3f7; --card:#ffffff; --text:#172033; --muted:#667085;
+  --border:#d6deea; --blue:#2864dc; --green:#23864b; --red:#c23838;
+  --amber:#c97700; --soft-blue:#e8f0ff; --soft-red:#ffe5e5;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent} html{touch-action:manipulation} body{touch-action:manipulation;-webkit-text-size-adjust:100%}
+html,body{margin:0;width:100%;height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:var(--text)}
+body{overflow:hidden;display:grid;grid-template-rows:74px 56px minmax(0,1fr)}
+button,input,textarea,select{font:inherit}
+header{height:auto;background:rgba(255,255,255,.97);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;justify-content:space-between;min-height:0}
+#titleTap{margin:0;font-size:26px;line-height:1;user-select:none;-webkit-user-select:none}
+.subtitle{font-size:12px;color:var(--muted);margin-top:3px}
+.clock{font-size:14px;color:var(--muted);font-weight:700}
+.summary{height:auto;padding:6px 12px 10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;min-height:0;background:var(--bg);position:relative;z-index:5}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:12px;text-align:center;padding:4px}
+.stat strong{display:block;font-size:21px;line-height:21px}.stat span{font-size:11px;color:var(--muted)}
+.kiosk{height:auto;min-height:0;padding:10px;display:grid;grid-template-columns:minmax(0,68fr) minmax(250px,32fr);grid-template-rows:1fr;gap:10px;overflow:hidden;position:relative;z-index:1}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:10px;overflow:hidden;display:flex;flex-direction:column;min-height:0;box-shadow:0 2px 8px rgba(23,32,51,.06)}
+.panel h2{margin:0 0 6px;font-size:18px;line-height:20px;flex:0 0 auto}
+.studentGrid{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(9,minmax(0,1fr));gap:7px;align-content:stretch;overflow:hidden}
+.studentBtn{border:0;border-radius:11px;background:var(--soft-blue);color:#17438f;font-size:16px;font-weight:800;min-height:0;height:auto;padding:0 6px;display:flex;align-items:center;justify-content:center;line-height:1.05}
+.studentBtn.out{background:var(--soft-red);color:#8d1f1f}
+.outGrid{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1fr;grid-auto-rows:minmax(58px,auto);gap:7px;overflow:auto;-webkit-overflow-scrolling:touch;align-content:start}
+.outCard{border:1px solid var(--border);border-radius:12px;padding:8px;background:#f7fbf8;min-height:58px}
+.outCard.mid{background:#fff8e6;border-color:#e7b85b}
+.outCard.late{background:#ffe8e8;border-color:#dc7777}
+.outName{font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.outDetail{font-size:12px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{font-size:13px;color:var(--muted);padding:10px 0}
+.modal{display:none;position:fixed;inset:0;z-index:100;background:rgba(19,27,44,.58);padding:18px;overflow:auto;-webkit-overflow-scrolling:touch}
+.modal.open{display:block}
+.modalCard{max-width:760px;margin:0 auto 40px;background:#fff;border-radius:22px;padding:20px;box-shadow:0 24px 70px rgba(0,0,0,.22)}
+.modalCard h2{margin-top:0}
+.destGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.destBtn{min-height:62px;border:2px solid var(--border);border-radius:14px;background:#f8fafc;font-size:18px;font-weight:800}
+.destBtn small{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+.actions{display:flex;gap:10px;margin-top:16px}
+.actions button{flex:1}
+.btn{border:0;border-radius:13px;min-height:48px;padding:10px 14px;font-weight:800}
+.primary{background:var(--blue);color:#fff} .secondary{background:#e7ebf1;color:var(--text)}
+.success{background:var(--green);color:#fff} .danger{background:var(--red);color:#fff}
+.warning{background:var(--amber);color:#fff}
+label{display:block;font-weight:800;margin:13px 0 6px}
+input,textarea,select{width:100%;padding:11px;border:1px solid #bcc6d4;border-radius:11px;background:#fff}
+textarea{min-height:180px;resize:vertical}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px}
+.toolbar .btn{min-height:42px;font-size:14px}
+.note{font-size:12px;color:var(--muted);line-height:1.45}
+hr{border:0;border-top:1px solid var(--border);margin:20px 0}
+.tableWrap{overflow:auto;max-height:320px;border:1px solid var(--border);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 7px;border-bottom:1px solid var(--border);text-align:left}
+th{position:sticky;top:0;background:#f8fafc;color:var(--muted);z-index:1}
+.groupRow td{background:#eaf1ff;font-weight:800}
+.statsGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+.statCard{border:1px solid var(--border);border-radius:12px;padding:10px;background:#fafbfd}
+.statCard strong{display:block;font-size:20px}
+.searchRow{display:grid;grid-template-columns:1fr 180px;gap:10px}
+.hidden{display:none!important}
+@media(max-width:700px){
+  .searchRow{grid-template-columns:1fr}
+  .kiosk{grid-template-columns:1fr;grid-template-rows:minmax(0,65fr) minmax(0,35fr)}
+  .studentGrid{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(9,minmax(0,1fr))}
+}
+
+@media screen and (min-width:700px) and (max-width:800px) and (orientation:portrait){
+  body{grid-template-rows:74px 56px minmax(0,1fr)}
+  .kiosk{grid-template-columns:minmax(0,68fr) minmax(250px,32fr);grid-template-rows:1fr}
+  .studentGrid{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(9,minmax(0,1fr))}
+}
+
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1 id="titleTap">4L Sign Out</h1>
+    <div class="subtitle">Tap your name to leave. Tap your red name again to return.</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div style="text-align:right">
+      <div class="clock" id="dateLabel"></div>
+      <div class="clock" id="clock"></div>
+    </div>
+    <button id="teacherButton" class="btn secondary" style="min-height:38px;padding:7px 12px;font-size:13px">Teacher</button>
+  </div>
+</header>
+
+<section class="summary">
+  <div class="stat"><strong id="inCount">0</strong><span>In class</span></div>
+  <div class="stat"><strong id="outCount">0</strong><span>Currently out</span></div>
+  <div class="stat"><strong id="todayCount">0</strong><span>Trips today</span></div>
+</section>
+
+<main class="kiosk">
+  <section class="panel">
+    <h2>Students</h2>
+    <div id="studentGrid" class="studentGrid"></div>
+  </section>
+  <section class="panel">
+    <h2>Currently Out</h2>
+    <div id="outGrid" class="outGrid"></div>
+  </section>
+</main>
+
+<div id="leaveModal" class="modal">
+  <div class="modalCard">
+    <h2 id="leaveHeading">Where are you going?</h2>
+    <div id="destinationGrid" class="destGrid"></div>
+    <label for="otherDestination">Other destination</label>
+    <input id="otherDestination" type="text" placeholder="Type destination">
+    <div class="actions">
+      <button id="leaveCancel" class="btn secondary">Cancel</button>
+      <button id="leaveConfirm" class="btn primary">Leave Room</button>
+    </div>
+  </div>
+</div>
+
+<div id="returnModal" class="modal">
+  <div class="modalCard">
+    <h2 id="returnHeading">Return to class?</h2>
+    <p id="returnDetails"></p>
+    <div class="actions">
+      <button id="returnCancel" class="btn secondary">Cancel</button>
+      <button id="returnConfirm" class="btn success">Return</button>
+    </div>
+  </div>
+</div>
+
+<div id="teacherModal" class="modal">
+  <div class="modalCard">
+    <div id="pinPanel">
+      <h2>Teacher Access</h2>
+      <label for="pinInput">PIN</label>
+      <input id="pinInput" type="password" inputmode="numeric">
+      <div class="actions">
+        <button id="pinCancel" class="btn secondary">Cancel</button>
+        <button id="pinUnlock" class="btn primary">Unlock</button>
+      </div>
+      <p class="note">Default PIN: 1234</p>
+    </div>
+
+    <div id="teacherPanel" class="hidden">
+      <h2>Teacher Dashboard</h2>
+
+      <div class="statsGrid">
+        <div class="statCard"><strong id="dashTodayTrips">0</strong><span>Trips today</span></div>
+        <div class="statCard"><strong id="dashTodayMinutes">0</strong><span>Minutes out today</span></div>
+        <div class="statCard"><strong id="dashWeekTrips">0</strong><span>Trips this week</span></div>
+        <div class="statCard"><strong id="dashWeekMinutes">0</strong><span>Minutes out this week</span></div>
+      </div>
+
+      <hr>
+
+      <div class="toolbar">
+        <button id="returnEveryone" class="btn warning">Return Everyone</button>
+        <button id="clearHistory" class="btn danger">Clear History</button>
+      </div>
+
+      <label for="studentNames">Student names — one per line</label>
+      <textarea id="studentNames"></textarea>
+
+      <label for="destinations">Destinations — one per line</label>
+      <textarea id="destinations" style="min-height:120px"></textarea>
+
+      <label for="newPin">Teacher PIN</label>
+      <input id="newPin" type="password" inputmode="numeric">
+
+      <div class="actions">
+        <button id="teacherClose" class="btn secondary">Close</button>
+        <button id="saveSettings" class="btn primary">Save Settings</button>
+      </div>
+
+      <hr>
+
+      <h3>History</h3>
+      <div class="searchRow">
+        <input id="historySearch" type="search" placeholder="Search student or destination">
+        <select id="historySort">
+          <option value="time">Sort by time</option>
+          <option value="name">Sort by student name</option>
+        </select>
+      </div>
+
+      <div class="toolbar" style="margin-top:10px">
+        <button id="viewToday" class="btn secondary">Today</button>
+        <button id="viewWeek" class="btn secondary">This Week</button>
+        <button id="viewAll" class="btn secondary">All History</button>
+      </div>
+
+      <div id="historyPanel" class="tableWrap" style="margin-top:10px">
+        <table>
+          <thead>
+            <tr><th>Student / Trip</th><th>Where</th><th>Left</th><th>Returned</th><th>Min</th></tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+
+      <hr>
+
+      <h3>Export</h3>
+      <div class="searchRow">
+        <select id="exportRange">
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="all">All History</option>
+        </select>
+        <select id="exportSort">
+          <option value="time">By time</option>
+          <option value="name">By student name</option>
+        </select>
+      </div>
+
+      <div class="toolbar" style="margin-top:10px">
+        <button id="downloadCsv" class="btn primary">Download CSV</button>
+        <button id="copyCsv" class="btn secondary">Copy CSV</button>
+      </div>
+
+      <textarea id="exportText" style="min-height:150px;margin-top:10px" readonly></textarea>
+      <p id="teacherStatus" class="note"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var DEFAULT_STUDENTS=["Abdi", "Jason", "Lachlan", "Azaylea", "Bryan", "Elliot", "Shreeya", "Nathan", "Sylvia", "Suhana", "Ritchy", "Muhammad", "Jackson", "Sulaiman", "Hugo", "Marc", "Gio", "Zoey", "Chloe", "Annie", "Doris", "Jeslyn", "Alan", "Olivia", "Jonathan", "Jessica"];
+var DEFAULT_DESTINATIONS=["🚻 Toilet","💧 Drink","🏢 Office","🩺 Sick Bay","📚 Library","👩‍🏫 Support Teacher"];
+
+var settings=load("clean_settings",{students:DEFAULT_STUDENTS,destinations:DEFAULT_DESTINATIONS,pin:"1234"});
+var active=load("clean_active",[]);
+var history=load("clean_history",[]);
+var selectedName="";
+var selectedDestination="";
+var tapCount=0;
+var tapTimer=null;
+var historyRange="today";
+
+function el(id){return document.getElementById(id)}
+function load(key,fallback){
+  try{var value=window.localStorage.getItem(key);if(value){return JSON.parse(value)}}catch(e){}
+  return fallback;
+}
+function save(){
+  try{
+    window.localStorage.setItem("clean_settings",JSON.stringify(settings));
+    window.localStorage.setItem("clean_active",JSON.stringify(active));
+    window.localStorage.setItem("clean_history",JSON.stringify(history));
+  }catch(e){alert("Could not save data. Make sure Private Browsing is off.")}
+}
+function clearNode(node){while(node.firstChild){node.removeChild(node.firstChild)}}
+function addText(node,value){node.appendChild(document.createTextNode(String(value)))}
+function now(){return new Date().getTime()}
+function minsSince(time){return Math.max(0,Math.floor((now()-time)/60000))}
+function findActive(name){
+  var i;
+  for(i=0;i<active.length;i++){if(active[i].name===name){return i}}
+  return -1;
+}
+function startOfToday(){
+  var d=new Date();d.setHours(0,0,0,0);return d.getTime();
+}
+function startOfWeek(){
+  var d=new Date(),day=d.getDay();var diff=(day===0?6:day-1);
+  d.setHours(0,0,0,0);d.setDate(d.getDate()-diff);return d.getTime();
+}
+function formatDateTime(time){
+  var d=new Date(time);
+  return ("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+"/"+d.getFullYear()+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+}
+function formatClock(){
+  var d=new Date();return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+}
+function formatDateLabel(){
+  var d=new Date(),days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return days[d.getDay()]+" "+d.getDate()+" "+months[d.getMonth()];
+}
+function cleanLines(value){
+  var raw=value.split("\n"),result=[],seen={},i,v;
+  for(i=0;i<raw.length;i++){v=raw[i].trim();if(v&&!seen[v]){result.push(v);seen[v]=true}}
+  return result;
+}
+function openModal(id){el(id).classList.add("open");window.scrollTo(0,0)}
+function closeModal(id){el(id).classList.remove("open")}
+function filteredHistory(range,search){
+  var minTime=0,i,item,items=[];
+  if(range==="today"){minTime=startOfToday()}
+  else if(range==="week"){minTime=startOfWeek()}
+  search=(search||"").toLowerCase();
+  for(i=0;i<history.length;i++){
+    item=history[i];
+    if(item.leftAt>=minTime){
+      if(!search||item.name.toLowerCase().indexOf(search)>=0||item.destination.toLowerCase().indexOf(search)>=0){items.push(item)}
+    }
+  }
+  return items;
+}
+function totals(items){
+  var i,minutes=0;
+  for(i=0;i<items.length;i++){minutes+=parseInt(items[i].minutes,10)||0}
+  return {trips:items.length,minutes:minutes};
+}
+
+function render(){
+  var grid=el("studentGrid"),out=el("outGrid"),i,name,index,button,card,n,d,todayTrips=0;
+  clearNode(grid);clearNode(out);
+
+  for(i=0;i<settings.students.length;i++){
+    name=settings.students[i];index=findActive(name);
+    button=document.createElement("button");
+    button.type="button";
+    button.className=index>=0?"studentBtn out":"studentBtn";
+    button.studentName=name;
+    button.onclick=function(){
+      var idx=findActive(this.studentName);
+      if(idx>=0){openReturn(this.studentName)}else{openLeave(this.studentName)}
+    };
+    addText(button,name);grid.appendChild(button);
+  }
+
+  if(active.length===0){
+    d=document.createElement("div");d.className="empty";addText(d,"Everyone is currently in class.");out.appendChild(d);
+  }else{
+    for(i=0;i<active.length;i++){
+      card=document.createElement("div");
+      card.className="outCard";
+      if(minsSince(active[i].leftAt)>=10){card.className+=" late"}
+      else if(minsSince(active[i].leftAt)>=5){card.className+=" mid"}
+      n=document.createElement("div");n.className="outName";addText(n,active[i].name);
+      d=document.createElement("div");d.className="outDetail";addText(d,active[i].destination+" · "+minsSince(active[i].leftAt)+" min");
+      card.appendChild(n);card.appendChild(d);out.appendChild(card);
+    }
+  }
+
+  todayTrips=filteredHistory("today","").length;
+  for(i=0;i<active.length;i++){if(active[i].leftAt>=startOfToday()){todayTrips++}}
+  el("inCount").textContent=String(settings.students.length-active.length);
+  el("outCount").textContent=String(active.length);
+  el("todayCount").textContent=String(todayTrips);
+  el("clock").textContent=formatClock();
+  el("dateLabel").textContent=formatDateLabel();
+}
+
+function openLeave(name){
+  var i,b,label;
+  selectedName=name;selectedDestination="";
+  el("leaveHeading").textContent=name+": Where are you going?";
+  el("otherDestination").value="";
+  clearNode(el("destinationGrid"));
+  for(i=0;i<settings.destinations.length;i++){
+    label=settings.destinations[i];
+    b=document.createElement("button");b.type="button";b.className="destBtn";
+    b.destinationValue=label;
+    b.onclick=function(){selectedDestination=this.destinationValue;completeLeave()};
+    addText(b,label);el("destinationGrid").appendChild(b);
+  }
+  openModal("leaveModal");
+}
+function completeLeave(){
+  var other=el("otherDestination").value.trim(),destination=other||selectedDestination;
+  if(!destination){alert("Choose a destination.");return}
+  if(findActive(selectedName)<0){active.push({name:selectedName,destination:destination,leftAt:now()})}
+  save();closeModal("leaveModal");render();
+}
+function openReturn(name){
+  var index=findActive(name);
+  if(index<0){render();return}
+  selectedName=name;
+  el("returnHeading").textContent=name+": Return to class?";
+  el("returnDetails").innerHTML="Destination: "+active[index].destination+"<br>Time out: "+minsSince(active[index].leftAt)+" minute(s)";
+  openModal("returnModal");
+}
+function completeReturn(){
+  var index=findActive(selectedName),item,end;
+  if(index<0){closeModal("returnModal");render();return}
+  item=active[index];end=now();
+  history.push({name:item.name,destination:item.destination,leftAt:item.leftAt,returnedAt:end,minutes:Math.max(1,Math.round((end-item.leftAt)/60000))});
+  active.splice(index,1);save();closeModal("returnModal");render();
+}
+
+function addCell(row,value){var cell=document.createElement("td");addText(cell,value);row.appendChild(cell)}
+function renderHistory(){
+  var body=el("historyBody"),mode=el("historySort").value,search=el("historySearch").value;
+  var items=filteredHistory(historyRange,search),i,item,row,groups={},names=[],name,records,j,total,head;
+  clearNode(body);
+  if(items.length===0){
+    row=document.createElement("tr");head=document.createElement("td");head.colSpan=5;addText(head,"No matching history.");row.appendChild(head);body.appendChild(row);return;
+  }
+  if(mode==="time"){
+    items.sort(function(a,b){return b.leftAt-a.leftAt});
+    for(i=0;i<items.length;i++){item=items[i];row=document.createElement("tr");addCell(row,item.name);addCell(row,item.destination);addCell(row,formatDateTime(item.leftAt));addCell(row,formatDateTime(item.returnedAt));addCell(row,item.minutes);body.appendChild(row)}
+  }else{
+    for(i=0;i<items.length;i++){item=items[i];if(!groups[item.name]){groups[item.name]=[];names.push(item.name)}groups[item.name].push(item)}
+    names.sort();
+    for(i=0;i<names.length;i++){
+      name=names[i];records=groups[name];total=0;
+      for(j=0;j<records.length;j++){total+=parseInt(records[j].minutes,10)||0}
+      row=document.createElement("tr");row.className="groupRow";head=document.createElement("td");head.colSpan=5;addText(head,name+" — "+records.length+" trip"+(records.length===1?"":"s")+" — "+total+" total min");row.appendChild(head);body.appendChild(row);
+      records.sort(function(a,b){return b.leftAt-a.leftAt});
+      for(j=0;j<records.length;j++){item=records[j];row=document.createElement("tr");addCell(row,"Trip "+(j+1));addCell(row,item.destination);addCell(row,formatDateTime(item.leftAt));addCell(row,formatDateTime(item.returnedAt));addCell(row,item.minutes);body.appendChild(row)}
+    }
+  }
+}
+function csvValue(value){return '"'+String(value).replace(/"/g,'""')+'"'}
+function buildCsv(){
+  var range=el("exportRange").value,mode=el("exportSort").value,items=filteredHistory(range,""),lines=[],i,item,groups={},names=[],name,records,j,total;
+  if(mode==="time"){
+    lines.push("Student,Destination,Left,Returned,Minutes");
+    items.sort(function(a,b){return a.leftAt-b.leftAt});
+    for(i=0;i<items.length;i++){item=items[i];lines.push([csvValue(item.name),csvValue(item.destination),csvValue(formatDateTime(item.leftAt)),csvValue(formatDateTime(item.returnedAt)),String(item.minutes)].join(","))}
+  }else{
+    lines.push("Student,Trips,Total Minutes,Destination,Left,Returned,Trip Minutes");
+    for(i=0;i<items.length;i++){item=items[i];if(!groups[item.name]){groups[item.name]=[];names.push(item.name)}groups[item.name].push(item)}
+    names.sort();
+    for(i=0;i<names.length;i++){
+      name=names[i];records=groups[name];total=0;
+      for(j=0;j<records.length;j++){total+=parseInt(records[j].minutes,10)||0}
+      records.sort(function(a,b){return a.leftAt-b.leftAt});
+      for(j=0;j<records.length;j++){item=records[j];lines.push([csvValue(name),j===0?String(records.length):"",j===0?String(total):"",csvValue(item.destination),csvValue(formatDateTime(item.leftAt)),csvValue(formatDateTime(item.returnedAt)),String(item.minutes)].join(","))}
+    }
+  }
+  return lines.join("\n");
+}
+function updateDashboard(){
+  var today=totals(filteredHistory("today","")),week=totals(filteredHistory("week",""));
+  el("dashTodayTrips").textContent=today.trips;el("dashTodayMinutes").textContent=today.minutes;
+  el("dashWeekTrips").textContent=week.trips;el("dashWeekMinutes").textContent=week.minutes;
+}
+function refreshExport(){el("exportText").value=buildCsv()}
+function openTeacher(){
+  el("pinPanel").classList.remove("hidden");el("teacherPanel").classList.add("hidden");el("pinInput").value="";openModal("teacherModal");
+}
+
+el("leaveCancel").onclick=function(){closeModal("leaveModal")};
+el("leaveConfirm").onclick=completeLeave;
+el("returnCancel").onclick=function(){closeModal("returnModal")};
+el("returnConfirm").onclick=completeReturn;
+
+el("titleTap").onclick=function(){
+  tapCount++;if(tapTimer){clearTimeout(tapTimer)}
+  tapTimer=setTimeout(function(){tapCount=0},1200);
+  if(tapCount>=5){tapCount=0;openTeacher()}
+};
+el("pinCancel").onclick=function(){closeModal("teacherModal")};
+el("pinUnlock").onclick=function(){
+  if(el("pinInput").value!==String(settings.pin)){alert("Incorrect PIN.");return}
+  el("pinPanel").classList.add("hidden");el("teacherPanel").classList.remove("hidden");
+  el("studentNames").value=settings.students.join("\n");
+  el("destinations").value=settings.destinations.join("\n");
+  el("newPin").value=settings.pin;
+  updateDashboard();renderHistory();refreshExport();
+};
+el("teacherClose").onclick=function(){closeModal("teacherModal")};
+el("saveSettings").onclick=function(){
+  var names=cleanLines(el("studentNames").value),dests=cleanLines(el("destinations").value);
+  settings.students=names.length?names:DEFAULT_STUDENTS;settings.destinations=dests.length?dests:DEFAULT_DESTINATIONS;settings.pin=el("newPin").value||"1234";
+  save();render();el("teacherStatus").textContent="Settings saved.";
+};
+el("returnEveryone").onclick=function(){
+  var end=now(),i,item;
+  for(i=0;i<active.length;i++){item=active[i];history.push({name:item.name,destination:item.destination,leftAt:item.leftAt,returnedAt:end,minutes:Math.max(1,Math.round((end-item.leftAt)/60000))})}
+  active=[];save();render();updateDashboard();renderHistory();refreshExport();el("teacherStatus").textContent="Everyone returned.";
+};
+el("clearHistory").onclick=function(){
+  if(!confirm("Clear all completed history?")){return}
+  history=[];save();render();updateDashboard();renderHistory();refreshExport();el("teacherStatus").textContent="History cleared.";
+};
+el("historySearch").oninput=renderHistory;
+el("historySort").onchange=renderHistory;
+el("viewToday").onclick=function(){historyRange="today";renderHistory()};
+el("viewWeek").onclick=function(){historyRange="week";renderHistory()};
+el("viewAll").onclick=function(){historyRange="all";renderHistory()};
+el("exportRange").onchange=refreshExport;
+el("exportSort").onchange=refreshExport;
+el("copyCsv").onclick=function(){
+  refreshExport();el("exportText").select();
+  try{document.execCommand("copy");el("teacherStatus").textContent="CSV copied."}catch(e){el("teacherStatus").textContent="Select the text and copy manually."}
+};
+el("downloadCsv").onclick=function(){
+  var csv=buildCsv(),blob=new Blob([csv],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="classroom-signout-"+el("exportRange").value+".csv";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url)},1000);
+  el("teacherStatus").textContent="CSV download started.";
+};
+
+
+document.addEventListener("gesturestart",function(e){e.preventDefault()},{passive:false});
+document.addEventListener("gesturechange",function(e){e.preventDefault()},{passive:false});
+document.addEventListener("gestureend",function(e){e.preventDefault()},{passive:false});
+var lastTouchEnd=0;
+document.addEventListener("touchend",function(e){
+  var nowTime=new Date().getTime();
+  if(nowTime-lastTouchEnd<=300){e.preventDefault()}
+  lastTouchEnd=nowTime;
+},{passive:false});
+
+render();setInterval(render,30000);
+})();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("service-worker.js");
+  });
+}
+
+</script>
+</body>
+</html>
